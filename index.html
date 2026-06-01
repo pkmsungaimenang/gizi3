@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator NIK & Antropometri Anak (Smart Upload)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #0a0f0d;
+            --bg2: #111a16;
+            --card: #152019;
+            --card2: #1a2b22;
+            --border: #2a4035;
+            --fg: #e8f0ec;
+            --muted: #7a9b8a;
+            --accent: #00e68a;
+            --accent2: #00c974;
+            --warm: #f5a623;
+            --warm2: #e8941a;
+            --danger: #ff5c5c;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            margin: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; }
+        .bg-glow {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none; z-index: 0; overflow: hidden;
+        }
+        .bg-glow::before {
+            content: ''; position: absolute;
+            top: -20%; left: -10%; width: 50%; height: 50%;
+            background: radial-gradient(circle, rgba(0,230,138,0.06) 0%, transparent 70%);
+            animation: floatGlow 12s ease-in-out infinite;
+        }
+        .bg-glow::after {
+            content: ''; position: absolute;
+            bottom: -20%; right: -10%; width: 60%; height: 60%;
+            background: radial-gradient(circle, rgba(245,166,35,0.04) 0%, transparent 70%);
+            animation: floatGlow 15s ease-in-out infinite reverse;
+        }
+        @keyframes floatGlow {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -40px) scale(1.1); }
+            66% { transform: translate(-20px, 30px) scale(0.95); }
+        }
+        .grid-pattern {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none; z-index: 0;
+            background-image:
+                linear-gradient(rgba(0,230,138,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,230,138,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+        .main-container { position: relative; z-index: 1; }
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 16px; background: var(--card);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer; position: relative; overflow: hidden;
+        }
+        .upload-zone::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(0,230,138,0.02), transparent);
+            opacity: 0; transition: opacity 0.4s;
+        }
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--accent); background: var(--card2);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0,230,138,0.1);
+        }
+        .upload-zone:hover::before, .upload-zone.drag-over::before { opacity: 1; }
+        .upload-icon {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--card2), var(--card));
+            border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 20px; transition: all 0.4s;
+        }
+        .upload-zone:hover .upload-icon {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px rgba(0,230,138,0.15);
+            transform: scale(1.05);
+        }
+        .data-table {
+            width: 100%; border-collapse: separate;
+            border-spacing: 0; font-size: 0.85rem;
+        }
+        .data-table thead th {
+            background: var(--card2); color: var(--accent);
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600; font-size: 0.72rem;
+            letter-spacing: 0.05em; text-transform: uppercase;
+            padding: 14px 10px;
+            border-bottom: 2px solid var(--accent);
+            white-space: nowrap; position: sticky; top: 0; z-index: 10;
+        }
+        .data-table tbody tr { transition: all 0.3s; }
+        .data-table tbody tr:hover { background: rgba(0,230,138,0.04); }
+        .data-table tbody td {
+            padding: 11px 10px;
+            border-bottom: 1px solid rgba(42,64,53,0.5);
+            color: var(--fg); white-space: nowrap;
+        }
+        .data-table tbody tr:nth-child(even) { background: rgba(21,32,25,0.5); }
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 10px; border-radius: 20px;
+            font-size: 0.72rem; font-weight: 600;
+        }
+        .badge-laki {
+            background: rgba(0,150,255,0.12); color: #4db8ff;
+            border: 1px solid rgba(0,150,255,0.2);
+        }
+        .badge-perempuan {
+            background: rgba(255,105,180,0.12); color: #ff7eb3;
+            border: 1px solid rgba(255,105,180,0.2);
+        }
+        .badge-terlentang {
+            background: rgba(245,166,35,0.12); color: var(--warm);
+            border: 1px solid rgba(245,166,35,0.2);
+        }
+        .badge-berdiri {
+            background: rgba(0,230,138,0.12); color: var(--accent);
+            border: 1px solid rgba(0,230,138,0.2);
+        }
+        .badge-ref-permenkes {
+            background: rgba(0,230,138,0.08); color: var(--accent);
+            border: 1px solid rgba(0,230,138,0.15); font-size: 0.68rem;
+        }
+        .badge-ref-who {
+            background: rgba(245,166,35,0.08); color: var(--warm);
+            border: 1px solid rgba(245,166,35,0.15); font-size: 0.68rem;
+        }
+        .nik-cell {
+            font-family: 'Space Grotesk', monospace;
+            font-weight: 600; color: var(--warm);
+            letter-spacing: 0.08em; font-size: 0.78rem;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent2), var(--accent));
+            color: var(--bg); font-weight: 700;
+            padding: 12px 28px; border-radius: 12px; border: none;
+            cursor: pointer; font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.9rem; transition: all 0.3s;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(0,230,138,0.25);
+        }
+        .btn-secondary {
+            background: var(--card2); color: var(--fg);
+            font-weight: 600; padding: 10px 22px; border-radius: 10px;
+            border: 1px solid var(--border); cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem;
+            transition: all 0.3s;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-secondary:hover { background: var(--border); transform: translateY(-1px); }
+        .btn-csv {
+            background: linear-gradient(135deg, #1a5c3a, #1a7a4a);
+            color: #fff; font-weight: 700;
+            padding: 12px 28px; border-radius: 12px;
+            border: 1px solid #2a8a5a; cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem;
+            transition: all 0.3s;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-csv:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(0,180,100,0.2);
+        }
+        .toast {
+            position: fixed; top: 24px; right: 24px; z-index: 9999;
+            padding: 14px 24px; border-radius: 12px;
+            font-weight: 600; font-size: 0.9rem;
+            display: flex; align-items: center; gap: 10px;
+            transform: translateX(120%);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            max-width: 90vw;
+        }
+        .toast.show { transform: translateX(0); }
+        .toast-success {
+            background: linear-gradient(135deg, #152019, #1a2b22);
+            border: 1px solid var(--accent); color: var(--accent);
+        }
+        .toast-error {
+            background: linear-gradient(135deg, #1f1215, #2b1a1e);
+            border: 1px solid var(--danger); color: var(--danger);
+        }
+        .table-scroll {
+            max-height: 65vh; overflow: auto;
+            border-radius: 12px; border: 1px solid var(--border);
+        }
+        .table-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+        .table-scroll::-webkit-scrollbar-track { background: var(--card); }
+        .table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        .table-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+        .stat-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 14px; padding: 20px; transition: all 0.3s;
+        }
+        .stat-card:hover {
+            border-color: var(--accent); transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+        .info-card {
+            background: linear-gradient(135deg, var(--card), var(--card2));
+            border: 1px solid var(--border); border-radius: 14px; padding: 24px;
+        }
+        .pulse-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--accent); animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(0,230,138,0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(0,230,138,0); }
+        }
+        .fade-in { animation: fadeIn 0.6s ease-out forwards; opacity: 0; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in-delay-1 { animation-delay: 0.1s; }
+        .fade-in-delay-2 { animation-delay: 0.2s; }
+        .fade-in-delay-3 { animation-delay: 0.3s; }
+        .fade-in-delay-4 { animation-delay: 0.4s; }
+        .counter {
+            font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 2rem;
+            background: linear-gradient(135deg, var(--accent), var(--warm));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .file-info {
+            background: var(--card2); border: 1px solid var(--border);
+            border-radius: 10px; padding: 12px 18px;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .lib-status {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 0.72rem; padding: 4px 10px;
+            border-radius: 20px; font-weight: 600;
+        }
+        .lib-ok {
+            background: rgba(0,230,138,0.1); color: var(--accent);
+            border: 1px solid rgba(0,230,138,0.2);
+        }
+        .lib-fail {
+            background: rgba(255,92,92,0.1); color: var(--danger);
+            border: 1px solid rgba(255,92,92,0.2);
+        }
+        .particle {
+            position: fixed; width: 3px; height: 3px;
+            border-radius: 50%; background: var(--accent);
+            opacity: 0.15; pointer-events: none; z-index: 0;
+        }
+        .ref-tag {
+            font-size: 0.65rem; padding: 2px 7px;
+            border-radius: 10px; display: inline-block;
+            margin-top: 3px; line-height: 1.4;
+        }
+        /* Highlighting extra columns slightly different */
+        .extra-col {
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+        @media (max-width: 768px) {
+            .data-table { font-size: 0.7rem; }
+            .data-table thead th, .data-table tbody td { padding: 8px 5px; }
+            .counter { font-size: 1.5rem; }
+            .badge { font-size: 0.65rem; padding: 2px 7px; }
+            .ref-tag { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-glow"></div>
+    <div class="grid-pattern"></div>
+    <div id="particles"></div>
+    <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
+
+    <div class="main-container">
+        <header class="py-8 px-6 text-center">
+            <div class="max-w-4xl mx-auto">
+                <div class="flex items-center justify-center gap-3 mb-4">
+                    <div class="pulse-dot"></div>
+                    <span style="color: var(--muted); font-size: 0.8rem; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 600;">Sistem Informasi Kesehatan Anak</span>
+                    <div class="pulse-dot"></div>
+                </div>
+                <h1 class="text-4xl md:text-5xl font-bold mb-4" style="line-height:1.15;">
+                    Generator <span style="color: var(--accent);">NIK</span> &amp; Standar
+                    <span style="color: var(--warm);">Antropometri</span>
+                </h1>
+                <p style="color: var(--muted); max-width: 620px; margin: 0 auto; font-size: 0.95rem; line-height: 1.7;">
+                    <strong>Smart Upload:</strong> Upload file Excel apa saja. Kami akan membaca kolom Anda, mempertahankan data asli, dan menambahkan NIK serta parameter antropometri ideal secara otomatis.
+                </p>
+                <div class="flex items-center justify-center gap-3 mt-5 flex-wrap">
+                    <span class="lib-status" id="libStatusXlsx">
+                        <i class="fas fa-circle-notch fa-spin"></i> Memuat SheetJS...
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 md:px-6 pb-16">
+            <section class="mb-10">
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <div class="upload-zone p-10 text-center" id="uploadZone"
+                             ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)"
+                             ondrop="handleDrop(event)" onclick="document.getElementById('fileInput').click()"
+                             role="button" tabindex="0" aria-label="Area upload file Excel"
+                             onkeydown="if(event.key==='Enter')this.click()">
+                            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(this.files[0])">
+                            <div class="upload-icon">
+                                <i class="fas fa-file-excel text-2xl" style="color: var(--accent);"></i>
+                            </div>
+                            <h3 class="text-lg font-bold mb-2">Upload File Excel Apapun</h3>
+                            <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 16px;">
+                                Seret & lepas file di sini, atau klik untuk memilih
+                            </p>
+                            <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                                <span style="background: var(--card2); border: 1px solid var(--border); padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; color: var(--muted);">.XLSX</span>
+                                <span style="background: var(--card2); border: 1px solid var(--border); padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; color: var(--muted);">.XLS</span>
+                                <span style="background: var(--card2); border: 1px solid var(--border); padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; color: var(--muted);">.CSV</span>
+                            </div>
+                        </div>
+                        <div id="fileInfo" class="file-info mt-4" style="display: none;">
+                            <i class="fas fa-file-circle-check" style="color: var(--accent);"></i>
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.85rem;" id="fileName"></div>
+                                <div style="color: var(--muted); font-size: 0.75rem;" id="fileSize"></div>
+                            </div>
+                            <button onclick="resetAll()" style="margin-left: auto; background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1rem;" aria-label="Hapus file">
+                                <i class="fas fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                            <i class="fas fa-wand-magic-sparkles" style="color: var(--accent);"></i>
+                            Format Fleksibel
+                        </h3>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table" style="border: 1px solid var(--border); border-radius: 8px;">
+                                <thead>
+                                    <tr><th>Nama</th><th>Jenis Kelamin</th><th>...Kolom Lain...</th><th>Hasil (Auto)</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Budi Santoso</td>
+                                        <td><span class="badge badge-laki">Laki-laki</span></td>
+                                        <td>Alamat A, Kelas 1</td>
+                                        <td style="color: var(--accent);"><i class="fas fa-plus"></i> NIK, BB, TB</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Siti Aminah</td>
+                                        <td><span class="badge badge-perempuan">Perempuan</span></td>
+                                        <td>Alamat B, Kelas 2</td>
+                                        <td style="color: var(--accent);"><i class="fas fa-plus"></i> NIK, BB, TB</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-4" style="font-size: 0.8rem; color: var(--muted); line-height: 1.8;">
+                            <p><i class="fas fa-check" style="color: var(--accent); margin-right: 6px;"></i>Sistem otomatis mendeteksi: <strong>Nama, Jenis Kelamin, NIK, Tanggal Lahir</strong>.</p>
+                            <p><i class="fas fa-check" style="color: var(--accent); margin-right: 6px;"></i>Jika NIK sudah ada, sistem tidak mengubahnya (hanya menambah BB/TB).</p>
+                            <p><i class="fas fa-check" style="color: var(--accent); margin-right: 6px;"></i>Jika Tanggal Lahir kosong, sistem membacanya dari NIK.</p>
+                            <p><i class="fas fa-check" style="color: var(--accent); margin-right: 6px;"></i>Kolom lain (Alamat, No HP, dll) ikut tersimpan di hasil export.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="statsSection" class="mb-8" style="display: none;">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="stat-card fade-in fade-in-delay-1">
+                        <div style="color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Total Data</div>
+                        <div class="counter" id="statTotal">0</div>
+                    </div>
+                    <div class="stat-card fade-in fade-in-delay-2">
+                        <div style="color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Laki-laki</div>
+                        <div class="counter" id="statMale">0</div>
+                    </div>
+                    <div class="stat-card fade-in fade-in-delay-3">
+                        <div style="color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Perempuan</div>
+                        <div class="counter" id="statFemale">0</div>
+                    </div>
+                    <div class="stat-card fade-in fade-in-delay-4">
+                        <div style="color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Rentang Usia</div>
+                        <div class="counter" id="statAge" style="font-size: 1.2rem;">-</div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="actionSection" class="mb-6" style="display: none;">
+                <div class="flex flex-wrap gap-3">
+                    <button class="btn-primary" onclick="exportToExcel()" id="btnExport">
+                        <i class="fas fa-file-excel"></i> Export ke Excel (.xlsx)
+                    </button>
+                    <button class="btn-csv" onclick="exportToCSV()" id="btnExportCsv">
+                        <i class="fas fa-file-csv"></i> Export ke CSV
+                    </button>
+                    <button class="btn-secondary" onclick="resetAll()">
+                        <i class="fas fa-rotate-left"></i> Reset Data
+                    </button>
+                </div>
+                <p style="color: var(--muted); font-size: 0.75rem; margin-top: 8px;">
+                    <i class="fas fa-lightbulb" style="color: var(--warm); margin-right: 4px;"></i>
+                    File hasil export berisi data asli Anda + data Antropometri yang dihitung.
+                </p>
+            </section>
+
+            <section id="tableSection" style="display: none;">
+                <div class="table-scroll">
+                    <table class="data-table" id="resultTable">
+                        <thead id="resultHead">
+                            <!-- Header will be populated dynamically -->
+                        </thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="mt-12">
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="info-card">
+                        <h3 class="text-base font-bold mb-3 flex items-center gap-2">
+                            <i class="fas fa-id-card" style="color: var(--warm);"></i>
+                            Logika NIK & Tanggal Lahir
+                        </h3>
+                        <div style="font-size: 0.85rem; line-height: 2;">
+                            <p>1. Jika file memiliki <strong>NIK</strong>, data NIK dipertahankan.</p>
+                            <p>2. Jika file <strong>tidak punya NIK</strong>, sistem membuat NIK baru (Kode 16.02.15).</p>
+                            <p>3. Jika file memiliki <strong>Tanggal Lahir</strong>, dipakai sebagai acuan usia.</p>
+                            <p>4. Jika <strong>Tanggal Lahir kosong</strong> tapi ada NIK, tanggal lahir ditebak dari digit NIK (DDMMYY).</p>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <h3 class="text-base font-bold mb-3 flex items-center gap-2">
+                            <i class="fas fa-ruler-vertical" style="color: var(--accent);"></i>
+                            Cara Ukur Tinggi Badan
+                        </h3>
+                        <div style="font-size: 0.85rem; line-height: 2;">
+                            <p class="flex items-center gap-2">
+                                <span class="badge badge-terlentang"><i class="fas fa-bed"></i> Terlentang</span>
+                                Usia 0 - 23 bulan (panjang badan / length)
+                            </p>
+                            <p class="flex items-center gap-2">
+                                <span class="badge badge-berdiri"><i class="fas fa-person"></i> Berdiri</span>
+                                Usia 24+ bulan (tinggi badan / height)
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="info-card mt-6">
+                    <h3 class="text-base font-bold mb-3 flex items-center gap-2">
+                        <i class="fas fa-book-medical" style="color: var(--accent);"></i>
+                        Sumber Data Referensi Antropometri
+                    </h3>
+                    <div class="grid md:grid-cols-2 gap-4" style="font-size: 0.82rem; color: var(--muted); line-height: 1.8;">
+                        <div style="padding: 14px; background: var(--bg); border-radius: 10px;">
+                            <span class="badge badge-ref-permenkes" style="margin-bottom: 8px;"><i class="fas fa-gavel"></i> Usia 0 - 59 bulan</span>
+                            <p>Peraturan Menteri Kesehatan Republik Indonesia Nomor 2 Tahun 2020 tentang Standar Antropometri Anak.</p>
+                        </div>
+                        <div style="padding: 14px; background: var(--bg); border-radius: 10px;">
+                            <span class="badge badge-ref-who" style="margin-bottom: 8px;"><i class="fas fa-globe"></i> Usia 60 - 228 bulan</span>
+                            <p>WHO Growth Reference for School-Aged Children and Adolescents (2007). Berlaku untuk anak usia 5 hingga 19 tahun.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="py-8 text-center" style="border-top: 1px solid var(--border); color: var(--muted); font-size: 0.8rem;">
+            <p>Smart Generator NIK & Antropometri</p>
+            <p class="mt-1">Data NIK bersifat simulasi dan tidak untuk keperluan administrasi resmi.</p>
+        </footer>
+    </div>
+
+    <script>
+        // ============================================================
+        // DETEKSI LIBRARY
+        // ============================================================
+        let xlsxReady = false;
+        function checkXlsxLibrary() {
+            const el = document.getElementById('libStatusXlsx');
+            if (typeof XLSX !== 'undefined') {
+                xlsxReady = true;
+                el.className = 'lib-status lib-ok';
+                el.innerHTML = '<i class="fas fa-circle-check"></i> SheetJS loaded';
+                return true;
+            }
+            el.className = 'lib-status lib-fail';
+            el.innerHTML = '<i class="fas fa-circle-xmark"></i> SheetJS gagal dimuat';
+            return false;
+        }
+        setTimeout(checkXlsxLibrary, 2000);
+        setTimeout(checkXlsxLibrary, 5000);
+
+        // ============================================================
+        // DATA ANTROPOMETRI LENGKAP
+        // ============================================================
+        const anthropometryData = {
+            male: {
+                0:  { bb: 3.3,  tb: 49.9, lila: 9.5,  lk: 34.5 }, 1:  { bb: 4.5,  tb: 54.7, lila: 10.7, lk: 37.3 },
+                2:  { bb: 5.6,  tb: 58.4, lila: 11.4, lk: 39.1 }, 3:  { bb: 6.4,  tb: 61.4, lila: 11.9, lk: 40.5 },
+                4:  { bb: 7.0,  tb: 63.9, lila: 12.3, lk: 41.5 }, 5:  { bb: 7.5,  tb: 65.9, lila: 12.6, lk: 42.2 },
+                6:  { bb: 7.9,  tb: 67.6, lila: 12.8, lk: 43.0 }, 7:  { bb: 8.3,  tb: 69.2, lila: 13.0, lk: 43.5 },
+                8:  { bb: 8.6,  tb: 70.6, lila: 13.2, lk: 44.0 }, 9:  { bb: 8.9,  tb: 72.0, lila: 13.4, lk: 44.4 },
+                10: { bb: 9.2,  tb: 73.3, lila: 13.5, lk: 44.8 }, 11: { bb: 9.4,  tb: 74.5, lila: 13.7, lk: 45.1 },
+                12: { bb: 9.6,  tb: 75.7, lila: 13.8, lk: 45.4 }, 13: { bb: 9.8,  tb: 76.9, lila: 14.0, lk: 45.7 },
+                14: { bb: 10.0, tb: 78.0, lila: 14.1, lk: 45.9 }, 15: { bb: 10.2, tb: 79.1, lila: 14.2, lk: 46.1 },
+                16: { bb: 10.4, tb: 80.2, lila: 14.3, lk: 46.3 }, 17: { bb: 10.5, tb: 81.2, lila: 14.4, lk: 46.5 },
+                18: { bb: 10.7, tb: 82.3, lila: 14.5, lk: 46.7 }, 19: { bb: 10.9, tb: 83.2, lila: 14.6, lk: 46.8 },
+                20: { bb: 11.0, tb: 84.2, lila: 14.7, lk: 47.0 }, 21: { bb: 11.2, tb: 85.1, lila: 14.8, lk: 47.1 },
+                22: { bb: 11.3, tb: 86.0, lila: 14.9, lk: 47.3 }, 23: { bb: 11.5, tb: 86.9, lila: 14.9, lk: 47.4 },
+                24: { bb: 11.7, tb: 87.8, lila: 15.0, lk: 47.5 }, 25: { bb: 11.8, tb: 88.7, lila: 15.1, lk: 47.6 },
+                26: { bb: 12.0, tb: 89.5, lila: 15.1, lk: 47.7 }, 27: { bb: 12.1, tb: 90.3, lila: 15.2, lk: 47.9 },
+                28: { bb: 12.3, tb: 91.1, lila: 15.2, lk: 48.0 }, 29: { bb: 12.4, tb: 91.9, lila: 15.3, lk: 48.1 },
+                30: { bb: 12.5, tb: 92.7, lila: 15.3, lk: 48.2 }, 31: { bb: 12.7, tb: 93.4, lila: 15.4, lk: 48.3 },
+                32: { bb: 12.8, tb: 94.1, lila: 15.4, lk: 48.4 }, 33: { bb: 12.9, tb: 94.9, lila: 15.5, lk: 48.5 },
+                34: { bb: 13.1, tb: 95.6, lila: 15.5, lk: 48.6 }, 35: { bb: 13.2, tb: 96.3, lila: 15.6, lk: 48.7 },
+                36: { bb: 13.3, tb: 96.1, lila: 15.6, lk: 48.8 }, 37: { bb: 13.5, tb: 96.7, lila: 15.6, lk: 48.9 },
+                38: { bb: 13.6, tb: 97.3, lila: 15.7, lk: 48.9 }, 39: { bb: 13.7, tb: 97.9, lila: 15.7, lk: 49.0 },
+                40: { bb: 13.9, tb: 98.5, lila: 15.8, lk: 49.1 }, 41: { bb: 14.0, tb: 99.1, lila: 15.8, lk: 49.1 },
+                42: { bb: 14.1, tb: 99.7, lila: 15.8, lk: 49.2 }, 43: { bb: 14.3, tb: 100.3, lila: 15.9, lk: 49.3 },
+                44: { bb: 14.4, tb: 100.9, lila: 15.9, lk: 49.3 }, 45: { bb: 14.5, tb: 101.5, lila: 16.0, lk: 49.4 },
+                46: { bb: 14.7, tb: 102.1, lila: 16.0, lk: 49.4 }, 47: { bb: 14.8, tb: 102.7, lila: 16.0, lk: 49.5 },
+                48: { bb: 14.9, tb: 103.3, lila: 16.1, lk: 49.6 }, 49: { bb: 15.1, tb: 103.8, lila: 16.1, lk: 49.6 },
+                50: { bb: 15.2, tb: 104.4, lila: 16.1, lk: 49.7 }, 51: { bb: 15.3, tb: 105.0, lila: 16.2, lk: 49.7 },
+                52: { bb: 15.5, tb: 105.6, lila: 16.2, lk: 49.8 }, 53: { bb: 15.6, tb: 106.1, lila: 16.2, lk: 49.8 },
+                54: { bb: 15.7, tb: 106.7, lila: 16.3, lk: 49.9 }, 55: { bb: 15.9, tb: 107.2, lila: 16.3, lk: 49.9 },
+                56: { bb: 16.0, tb: 107.8, lila: 16.3, lk: 50.0 }, 57: { bb: 16.1, tb: 108.3, lila: 16.4, lk: 50.0 },
+                58: { bb: 16.3, tb: 108.9, lila: 16.4, lk: 50.1 }, 59: { bb: 16.4, tb: 109.4, lila: 16.4, lk: 50.1 },
+                60: { bb: 18.3,  tb: 110.0, lila: 15.5, lk: 50.5 }, 63: { bb: 19.0,  tb: 111.5, lila: 15.7, lk: 50.8 },
+                66: { bb: 19.5,  tb: 113.0, lila: 15.9, lk: 51.0 }, 69: { bb: 20.3,  tb: 114.5, lila: 16.1, lk: 51.3 },
+                72: { bb: 20.9,  tb: 116.0, lila: 16.3, lk: 51.5 }, 75: { bb: 21.8,  tb: 117.8, lila: 16.5, lk: 51.8 },
+                78: { bb: 22.4,  tb: 119.5, lila: 16.7, lk: 52.0 }, 81: { bb: 23.2,  tb: 121.2, lila: 16.9, lk: 52.3 },
+                84: { bb: 23.8,  tb: 122.7, lila: 17.1, lk: 52.5 }, 87: { bb: 24.6,  tb: 124.3, lila: 17.3, lk: 52.8 },
+                90: { bb: 25.2,  tb: 125.8, lila: 17.4, lk: 53.0 }, 93: { bb: 26.0,  tb: 127.3, lila: 17.6, lk: 53.2 },
+                96: { bb: 26.5,  tb: 128.7, lila: 17.8, lk: 53.4 }, 99: { bb: 27.4,  tb: 130.2, lila: 18.0, lk: 53.7 },
+                102:{ bb: 27.9,  tb: 131.6, lila: 18.2, lk: 53.9 }, 105:{ bb: 28.8,  tb: 133.0, lila: 18.4, lk: 54.1 },
+                108:{ bb: 29.3,  tb: 134.5, lila: 18.5, lk: 54.3 }, 111:{ bb: 30.3,  tb: 136.0, lila: 18.7, lk: 54.5 },
+                114:{ bb: 31.0,  tb: 137.5, lila: 18.9, lk: 54.8 }, 117:{ bb: 32.0,  tb: 139.0, lila: 19.1, lk: 55.0 },
+                120:{ bb: 32.8,  tb: 140.5, lila: 19.3, lk: 55.2 }, 123:{ bb: 33.8,  tb: 142.0, lila: 19.5, lk: 55.4 },
+                126:{ bb: 34.7,  tb: 143.8, lila: 19.7, lk: 55.6 }, 129:{ bb: 36.0,  tb: 145.5, lila: 19.9, lk: 55.8 },
+                132:{ bb: 37.1,  tb: 147.3, lila: 20.1, lk: 55.9 }, 135:{ bb: 38.5,  tb: 149.0, lila: 20.4, lk: 56.0 },
+                138:{ bb: 39.9,  tb: 151.0, lila: 20.7, lk: 56.2 }, 141:{ bb: 41.5,  tb: 153.0, lila: 21.0, lk: 56.3 },
+                144:{ bb: 43.0,  tb: 155.0, lila: 21.3, lk: 56.5 }, 147:{ bb: 44.8,  tb: 157.0, lila: 21.6, lk: 56.6 },
+                150:{ bb: 46.3,  tb: 159.0, lila: 21.9, lk: 56.7 }, 153:{ bb: 48.2,  tb: 161.0, lila: 22.2, lk: 56.8 },
+                156:{ bb: 49.9,  tb: 163.0, lila: 22.6, lk: 56.9 }, 159:{ bb: 51.5,  tb: 165.0, lila: 23.0, lk: 57.0 },
+                162:{ bb: 53.8,  tb: 167.0, lila: 23.4, lk: 57.0 }, 165:{ bb: 55.5,  tb: 168.5, lila: 23.8, lk: 57.1 },
+                168:{ bb: 57.2,  tb: 170.0, lila: 24.2, lk: 57.1 }, 171:{ bb: 58.0,  tb: 171.0, lila: 24.5, lk: 57.2 },
+                174:{ bb: 59.4,  tb: 172.0, lila: 24.8, lk: 57.2 }, 177:{ bb: 60.5,  tb: 173.0, lila: 25.1, lk: 57.2 },
+                180:{ bb: 62.3,  tb: 173.5, lila: 25.4, lk: 57.3 }, 183:{ bb: 63.0,  tb: 174.0, lila: 25.6, lk: 57.3 },
+                186:{ bb: 63.9,  tb: 174.0, lila: 25.7, lk: 57.3 }, 189:{ bb: 64.8,  tb: 174.5, lila: 25.8, lk: 57.3 },
+                192:{ bb: 65.9,  tb: 175.5, lila: 26.0, lk: 57.4 }, 195:{ bb: 66.5,  tb: 176.0, lila: 26.0, lk: 57.4 },
+                198:{ bb: 67.2,  tb: 176.0, lila: 26.1, lk: 57.4 }, 201:{ bb: 67.8,  tb: 176.5, lila: 26.1, lk: 57.4 },
+                204:{ bb: 68.2,  tb: 176.5, lila: 26.2, lk: 57.5 }, 207:{ bb: 68.8,  tb: 177.0, lila: 26.2, lk: 57.5 },
+                210:{ bb: 69.2,  tb: 177.0, lila: 26.3, lk: 57.5 }, 213:{ bb: 69.5,  tb: 177.0, lila: 26.3, lk: 57.5 },
+                216:{ bb: 69.9,  tb: 177.0, lila: 26.3, lk: 57.5 }, 219:{ bb: 70.1,  tb: 177.0, lila: 26.4, lk: 57.5 },
+                222:{ bb: 70.3,  tb: 177.0, lila: 26.4, lk: 57.5 }, 225:{ bb: 70.5,  tb: 177.0, lila: 26.4, lk: 57.5 },
+                228:{ bb: 70.7,  tb: 177.0, lila: 26.4, lk: 57.5 }
+            },
+            female: {
+                0:  { bb: 3.2,  tb: 49.1, lila: 9.3,  lk: 33.9 }, 1:  { bb: 4.2,  tb: 53.7, lila: 10.4, lk: 36.6 },
+                2:  { bb: 5.1,  tb: 57.1, lila: 11.1, lk: 38.3 }, 3:  { bb: 5.8,  tb: 59.8, lila: 11.5, lk: 39.5 },
+                4:  { bb: 6.4,  tb: 62.1, lila: 11.9, lk: 40.4 }, 5:  { bb: 6.9,  tb: 64.0, lila: 12.2, lk: 41.2 },
+                6:  { bb: 7.3,  tb: 65.7, lila: 12.4, lk: 41.8 }, 7:  { bb: 7.6,  tb: 67.3, lila: 12.6, lk: 42.3 },
+                8:  { bb: 7.9,  tb: 68.7, lila: 12.7, lk: 42.7 }, 9:  { bb: 8.2,  tb: 70.1, lila: 12.9, lk: 43.1 },
+                10: { bb: 8.5,  tb: 71.5, lila: 13.0, lk: 43.4 }, 11: { bb: 8.7,  tb: 72.8, lila: 13.2, lk: 43.7 },
+                12: { bb: 8.9,  tb: 74.0, lila: 13.3, lk: 43.9 }, 13: { bb: 9.1,  tb: 75.2, lila: 13.4, lk: 44.2 },
+                14: { bb: 9.3,  tb: 76.4, lila: 13.5, lk: 44.4 }, 15: { bb: 9.5,  tb: 77.5, lila: 13.6, lk: 44.6 },
+                16: { bb: 9.6,  tb: 78.6, lila: 13.7, lk: 44.8 }, 17: { bb: 9.8,  tb: 79.6, lila: 13.8, lk: 44.9 },
+                18: { bb: 10.0, tb: 80.7, lila: 13.9, lk: 45.1 }, 19: { bb: 10.1, tb: 81.7, lila: 14.0, lk: 45.2 },
+                20: { bb: 10.3, tb: 82.6, lila: 14.0, lk: 45.4 }, 21: { bb: 10.5, tb: 83.6, lila: 14.1, lk: 45.5 },
+                22: { bb: 10.6, tb: 84.5, lila: 14.2, lk: 45.6 }, 23: { bb: 10.8, tb: 85.4, lila: 14.2, lk: 45.7 },
+                24: { bb: 11.0, tb: 86.4, lila: 14.3, lk: 45.9 }, 25: { bb: 11.1, tb: 87.3, lila: 14.3, lk: 46.0 },
+                26: { bb: 11.3, tb: 88.1, lila: 14.4, lk: 46.0 }, 27: { bb: 11.4, tb: 89.0, lila: 14.4, lk: 46.1 },
+                28: { bb: 11.6, tb: 89.8, lila: 14.5, lk: 46.2 }, 29: { bb: 11.7, tb: 90.6, lila: 14.5, lk: 46.3 },
+                30: { bb: 11.9, tb: 91.5, lila: 14.6, lk: 46.4 }, 31: { bb: 12.0, tb: 92.3, lila: 14.6, lk: 46.5 },
+                32: { bb: 12.1, tb: 93.1, lila: 14.6, lk: 46.5 }, 33: { bb: 12.3, tb: 93.9, lila: 14.7, lk: 46.6 },
+                34: { bb: 12.4, tb: 94.7, lila: 14.7, lk: 46.7 }, 35: { bb: 12.5, tb: 95.5, lila: 14.8, lk: 46.8 },
+                36: { bb: 12.7, tb: 95.1, lila: 14.8, lk: 46.8 }, 37: { bb: 12.8, tb: 95.8, lila: 14.8, lk: 46.9 },
+                38: { bb: 12.9, tb: 96.4, lila: 14.9, lk: 46.9 }, 39: { bb: 13.1, tb: 97.1, lila: 14.9, lk: 47.0 },
+                40: { bb: 13.2, tb: 97.7, lila: 15.0, lk: 47.1 }, 41: { bb: 13.3, tb: 98.4, lila: 15.0, lk: 47.1 },
+                42: { bb: 13.5, tb: 99.0, lila: 15.0, lk: 47.2 }, 43: { bb: 13.6, tb: 99.6, lila: 15.0, lk: 47.2 },
+                44: { bb: 13.7, tb: 100.3, lila: 15.1, lk: 47.3 }, 45: { bb: 13.9, tb: 100.9, lila: 15.1, lk: 47.3 },
+                46: { bb: 14.0, tb: 101.5, lila: 15.1, lk: 47.4 }, 47: { bb: 14.1, tb: 102.2, lila: 15.2, lk: 47.4 },
+                48: { bb: 14.2, tb: 102.8, lila: 15.2, lk: 47.5 }, 49: { bb: 14.4, tb: 103.4, lila: 15.2, lk: 47.5 },
+                50: { bb: 14.5, tb: 104.0, lila: 15.3, lk: 47.6 }, 51: { bb: 14.6, tb: 104.6, lila: 15.3, lk: 47.6 },
+                52: { bb: 14.8, tb: 105.2, lila: 15.3, lk: 47.7 }, 53: { bb: 14.9, tb: 105.8, lila: 15.4, lk: 47.7 },
+                54: { bb: 15.0, tb: 106.4, lila: 15.4, lk: 47.8 }, 55: { bb: 15.1, tb: 107.0, lila: 15.4, lk: 47.8 },
+                56: { bb: 15.3, tb: 107.5, lila: 15.4, lk: 47.9 }, 57: { bb: 15.4, tb: 108.1, lila: 15.5, lk: 47.9 },
+                58: { bb: 15.5, tb: 108.7, lila: 15.5, lk: 48.0 }, 59: { bb: 15.7, tb: 109.2, lila: 15.5, lk: 48.0 },
+                60: { bb: 17.7,  tb: 109.4, lila: 15.3, lk: 49.0 }, 63: { bb: 18.5,  tb: 110.9, lila: 15.5, lk: 49.2 },
+                66: { bb: 19.0,  tb: 112.4, lila: 15.7, lk: 49.4 }, 69: { bb: 19.7,  tb: 113.9, lila: 15.9, lk: 49.6 },
+                72: { bb: 20.3,  tb: 115.5, lila: 16.0, lk: 49.8 }, 75: { bb: 21.0,  tb: 117.0, lila: 16.2, lk: 50.0 },
+                78: { bb: 21.5,  tb: 118.6, lila: 16.4, lk: 50.2 }, 81: { bb: 22.3,  tb: 120.1, lila: 16.6, lk: 50.3 },
+                84: { bb: 22.8,  tb: 121.7, lila: 16.7, lk: 50.5 }, 87: { bb: 23.5,  tb: 123.2, lila: 16.9, lk: 50.7 },
+                90: { bb: 24.1,  tb: 124.8, lila: 17.0, lk: 50.8 }, 93: { bb: 24.9,  tb: 126.3, lila: 17.2, lk: 51.0 },
+                96: { bb: 25.6,  tb: 127.8, lila: 17.4, lk: 51.1 }, 99: { bb: 26.4,  tb: 129.3, lila: 17.5, lk: 51.3 },
+                102:{ bb: 27.2,  tb: 130.8, lila: 17.7, lk: 51.4 }, 105:{ bb: 28.0,  tb: 132.3, lila: 17.9, lk: 51.5 },
+                108:{ bb: 28.8,  tb: 133.8, lila: 18.0, lk: 51.6 }, 111:{ bb: 29.8,  tb: 135.3, lila: 18.2, lk: 51.8 },
+                114:{ bb: 30.7,  tb: 136.8, lila: 18.4, lk: 51.9 }, 117:{ bb: 31.7,  tb: 138.3, lila: 18.6, lk: 52.0 },
+                120:{ bb: 32.6,  tb: 139.8, lila: 18.8, lk: 52.1 }, 123:{ bb: 33.9,  tb: 141.5, lila: 19.0, lk: 52.2 },
+                126:{ bb: 35.0,  tb: 143.0, lila: 19.2, lk: 52.3 }, 129:{ bb: 36.4,  tb: 144.8, lila: 19.5, lk: 52.4 },
+                132:{ bb: 37.6,  tb: 146.5, lila: 19.7, lk: 52.5 }, 135:{ bb: 38.7,  tb: 148.0, lila: 20.0, lk: 52.6 },
+                138:{ bb: 39.4,  tb: 149.5, lila: 20.2, lk: 52.6 }, 141:{ bb: 40.8,  tb: 151.0, lila: 20.5, lk: 52.7 },
+                144:{ bb: 43.3,  tb: 152.5, lila: 20.8, lk: 52.8 }, 147:{ bb: 44.8,  tb: 154.0, lila: 21.1, lk: 52.8 },
+                150:{ bb: 46.2,  tb: 155.5, lila: 21.4, lk: 52.9 }, 153:{ bb: 47.5,  tb: 157.0, lila: 21.7, lk: 52.9 },
+                156:{ bb: 49.2,  tb: 158.0, lila: 22.0, lk: 53.0 }, 159:{ bb: 50.2,  tb: 159.0, lila: 22.2, lk: 53.0 },
+                162:{ bb: 51.7,  tb: 160.0, lila: 22.4, lk: 53.0 }, 165:{ bb: 52.2,  tb: 160.5, lila: 22.6, lk: 53.0 },
+                168:{ bb: 53.4,  tb: 161.0, lila: 22.8, lk: 53.1 }, 171:{ bb: 54.0,  tb: 161.5, lila: 22.9, lk: 53.1 },
+                174:{ bb: 55.1,  tb: 162.0, lila: 23.0, lk: 53.1 }, 177:{ bb: 55.5,  tb: 162.0, lila: 23.1, lk: 53.1 },
+                180:{ bb: 56.2,  tb: 162.5, lila: 23.2, lk: 53.2 }, 183:{ bb: 56.5,  tb: 162.5, lila: 23.2, lk: 53.2 },
+                186:{ bb: 57.1,  tb: 163.0, lila: 23.3, lk: 53.2 }, 189:{ bb: 57.4,  tb: 163.0, lila: 23.3, lk: 53.2 },
+                192:{ bb: 57.7,  tb: 163.0, lila: 23.4, lk: 53.2 }, 195:{ bb: 58.0,  tb: 163.0, lila: 23.4, lk: 53.2 },
+                198:{ bb: 58.5,  tb: 163.5, lila: 23.4, lk: 53.2 }, 201:{ bb: 58.8,  tb: 163.5, lila: 23.5, lk: 53.2 },
+                204:{ bb: 58.8,  tb: 163.5, lila: 23.5, lk: 53.2 }, 207:{ bb: 59.0,  tb: 163.5, lila: 23.5, lk: 53.2 },
+                210:{ bb: 59.1,  tb: 163.5, lila: 23.5, lk: 53.2 }, 213:{ bb: 59.2,  tb: 163.5, lila: 23.5, lk: 53.2 },
+                216:{ bb: 59.3,  tb: 163.5, lila: 23.5, lk: 53.2 }, 219:{ bb: 59.4,  tb: 163.5, lila: 23.5, lk: 53.2 },
+                222:{ bb: 59.4,  tb: 163.5, lila: 23.5, lk: 53.2 }, 225:{ bb: 59.5,  tb: 163.5, lila: 23.5, lk: 53.2 },
+                228:{ bb: 59.5,  tb: 163.5, lila: 23.5, lk: 53.2 }
+            }
+        };
+
+        const MAX_AGE_MONTHS = 228; 
+        let processedData = [];
+
+        // ============================================================
+        // UTILITAS
+        // ============================================================
+        function parseDate(value) {
+            if (!value) return null;
+            if (value instanceof Date && !isNaN(value)) return value;
+            if (typeof value === 'number') {
+                const excelEpoch = new Date(1899, 11, 30);
+                const date = new Date(excelEpoch.getTime() + value * 86400000);
+                if (!isNaN(date)) return date;
+            }
+            const str = String(value).trim();
+            let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+            if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+            m = str.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+            if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+            m = str.match(/^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$/);
+            if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+            const d = new Date(str);
+            return isNaN(d) ? null : d;
+        }
+
+        function extractDOBFromNIK(nik) {
+            if (!nik || typeof nik !== 'string' || nik.length < 8) return null;
+            const nikClean = nik.replace(/\D/g, ''); // Hapus non-digit
+            if (nikClean.length < 8) return null;
+
+            // Format NIK: PPOO DD MM YY XXXX
+            // Bagian tanggal: DDMMYY mulai dari index 6 (0-based) atau digit ke-7
+            // Contoh: 3201 15 01 90 0001 -> Tgl: 15-01-90
+            
+            const dd = parseInt(nikClean.substring(6, 8), 10);
+            const mm = parseInt(nikClean.substring(8, 10), 10) - 1; // JS Month 0-11
+            const yy = parseInt(nikClean.substring(10, 12), 10);
+
+            // Cek validitas dasar
+            if (isNaN(dd) || isNaN(mm) || isNaN(yy)) return null;
+            
+            // Logic Century
+            const currentYear = new Date().getFullYear();
+            const currentCentury = Math.floor(currentYear / 100) * 100;
+            
+            let year = currentCentury + yy;
+            if (year > currentYear) {
+                year -= 100;
+            }
+            
+            // Validasi tanggal (misal 30 Feb)
+            const d = new Date(year, mm, dd);
+            if (d.getDate() !== dd || d.getMonth() !== mm) return null; // Invalid date logic
+
+            return d;
+        }
+
+        function formatDate(date) {
+            return String(date.getDate()).padStart(2, '0') + '/' +
+                   String(date.getMonth() + 1).padStart(2, '0') + '/' +
+                   date.getFullYear();
+        }
+
+        function normalizeGender(value) {
+            if (!value) return null;
+            const s = String(value).trim().toLowerCase();
+            if (['laki-laki', 'laki', 'lk', 'l'].includes(s)) return 'male';
+            if (['perempuan', 'pr', 'p'].includes(s)) return 'female';
+            return null;
+        }
+
+        function calcAgeMonths(birthDate, refDate) {
+            if (!birthDate) return null;
+            const ref = refDate || new Date();
+            let totalMonths = (ref.getFullYear() - birthDate.getFullYear()) * 12 + (ref.getMonth() - birthDate.getMonth());
+            if (ref.getDate() - birthDate.getDate() < 0) totalMonths--;
+            return totalMonths;
+        }
+
+        function formatAge(months) {
+            if (months < 0) return '-';
+            const years = Math.floor(months / 12);
+            const rem = months % 12;
+            if (years === 0) return rem + ' bln';
+            if (rem === 0) return years + ' thn';
+            return years + ' thn ' + rem + ' bln';
+        }
+
+        function interpolate(monthAge, gender, param) {
+            const data = anthropometryData[gender];
+            if (!data) return null;
+            const clampedAge = Math.max(0, Math.min(MAX_AGE_MONTHS, monthAge));
+            const ageFloor = Math.floor(clampedAge);
+            const ageCeil = Math.ceil(clampedAge);
+            const fraction = clampedAge - ageFloor;
+
+            if (ageFloor === ageCeil) {
+                return data[ageFloor] ? data[ageFloor][param] : null;
+            }
+
+            const valFloor = data[ageFloor] ? data[ageFloor][param] : null;
+            const valCeil = data[ageCeil] ? data[ageCeil][param] : null;
+
+            if (valFloor === null && valCeil === null) return null;
+            if (valFloor === null) return valCeil;
+            if (valCeil === null) return valFloor;
+
+            return Math.round((valFloor + (valCeil - valFloor) * fraction) * 10) / 10;
+        }
+
+        function generateNIK(birthDate, gender) {
+            const dd = birthDate.getDate();
+            const mm = birthDate.getMonth() + 1;
+            const yy = birthDate.getFullYear() % 100;
+            const dayPart = gender === 'female' ? String(dd + 40).padStart(2, '0') : String(dd).padStart(2, '0');
+            const datePart = dayPart + String(mm).padStart(2, '0') + String(yy).padStart(2, '0');
+            const randomPart = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
+            return '160215' + datePart + randomPart;
+        }
+
+        function getMeasurementMethod(ageMonths) {
+            return ageMonths <= 23 ? 'Terlentang' : 'Berdiri';
+        }
+
+        function getReferensi(ageMonths) {
+            return ageMonths <= 59 ? 'Permenkes No. 2/2020' : 'WHO 2007';
+        }
+
+        // ============================================================
+        // UPLOAD & PARSE
+        // ============================================================
+        function handleDragOver(e) {
+            e.preventDefault(); e.stopPropagation();
+            document.getElementById('uploadZone').classList.add('drag-over');
+        }
+        function handleDragLeave(e) {
+            e.preventDefault(); e.stopPropagation();
+            document.getElementById('uploadZone').classList.remove('drag-over');
+        }
+        function handleDrop(e) {
+            e.preventDefault(); e.stopPropagation();
+            document.getElementById('uploadZone').classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+        }
+
+        function handleFile(file) {
+            if (!file) return;
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            if (!['.xlsx', '.xls', '.csv'].includes(ext)) {
+                showToast('Format file tidak didukung. Gunakan .xlsx, .xls, atau .csv', 'error');
+                return;
+            }
+            if (typeof XLSX === 'undefined') {
+                showToast('Library SheetJS belum dimuat. Tunggu atau refresh halaman.', 'error');
+                checkXlsxLibrary();
+                return;
+            }
+            document.getElementById('fileInfo').style.display = 'flex';
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+                    const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+                    if (json.length === 0) { showToast('File kosong atau tidak terbaca', 'error'); return; }
+                    processJsonData(json);
+                } catch (err) {
+                    console.error(err);
+                    showToast('Gagal membaca file: ' + err.message, 'error');
+                }
+            };
+            reader.onerror = () => showToast('Gagal membaca file.', 'error');
+            reader.readAsArrayBuffer(file);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        // ============================================================
+        // PROSES DATA (LOGIKA UTAMA)
+        // ============================================================
+        function processJsonData(jsonData) {
+            processedData = [];
+            const refDate = new Date();
+            let errors = [];
+            let warnings = [];
+
+            jsonData.forEach((row, index) => {
+                // 1. Cari kolom penting secara longgar
+                const name = findCol(row, ['nama', 'name', 'nm', 'siswa', 'anak']);
+                const rawDate = findCol(row, ['tanggal lahir', 'tgl lahir', 'tanggal_lahir', 'tgl_lahir', 'lahir', 'tanggal', 'tgl', 'birth date', 'dob', 'ttl']);
+                const rawGender = findCol(row, ['jenis kelamin', 'jenis_kelamin', 'jk', 'gender', 'sex', 'kelamin']);
+                const rawNik = findCol(row, ['nik', 'no nik', 'nomor nik', 'no_ktp', 'ktp']);
+
+                // Skip baris kosong total
+                if (!name && !rawDate && !rawGender && !rawNik) return;
+
+                // Validasi Wajib
+                if (!name) { errors.push(`Baris ${index + 2}: Nama wajib ada`); return; }
+                if (!rawGender) { errors.push(`Baris ${index + 2}: Jenis kelamin wajib ada`); return; }
+                
+                const gender = normalizeGender(rawGender);
+                if (!gender) { errors.push(`Baris ${index + 2}: Jenis kelamin tidak valid ("${rawGender}")`); return; }
+
+                // 2. Logika Tanggal Lahir & NIK
+                let birthDate = parseDate(rawDate);
+                let nik = rawNik ? String(rawNik).trim() : null;
+                let dobSource = "";
+
+                if (birthDate) {
+                    dobSource = "Kolom Excel";
+                } else if (nik && nik.length >= 8) {
+                    birthDate = extractDOBFromNIK(nik);
+                    if (birthDate) dobSource = "Dari NIK";
+                }
+
+                // Jika masih tidak ada tanggal lahir, Error (kita butuh umur buat antropometri)
+                if (!birthDate) {
+                    errors.push(`Baris ${index + 2}: Tanggal lahir hilang & NIK tidak valid untuk prediksi umur.`); return;
+                }
+
+                // 3. Generate NIK jika belum ada
+                if (!nik) {
+                    nik = generateNIK(birthDate, gender);
+                }
+
+                // 4. Hitung Usia & Data Antropometri
+                const ageMonths = calcAgeMonths(birthDate, refDate);
+                if (ageMonths === null || ageMonths < 0) {
+                    errors.push(`Baris ${index + 2}: Tanggal lahir di masa depan`); return;
+                }
+
+                if (ageMonths > MAX_AGE_MONTHS) {
+                    warnings.push(`${name}: usia ${formatAge(ageMonths)} melebihi 19 tahun, menggunakan data 19 tahun`);
+                }
+
+                const bbIdeal = interpolate(ageMonths, gender, 'bb');
+                const tbIdeal = interpolate(ageMonths, gender, 'tb');
+                const lila = interpolate(ageMonths, gender, 'lila');
+                const lk = interpolate(ageMonths, gender, 'lk');
+                const caraUkur = getMeasurementMethod(ageMonths);
+                const referensi = getReferensi(ageMonths);
+
+                // 5. Bangun Object Data Baru (Preserve original row keys)
+                // Kita buat objek baru agar urutan key bisa kita kontrol nanti di render
+                // tapi kita simpan semua key dari row asli
+                let newRow = { ...row };
+
+                // Update / Normalize keys utama agar seragam di tampilan
+                // Kita rename key asli ke key standar kita untuk tampilan, tapi simpan key asli jika perlu?
+                // Strategi: Kita timpa (overwrite) properti standar di dalam object newRow
+                
+                newRow['No'] = processedData.length + 1;
+                newRow['Nama'] = String(name).trim();
+                newRow['NIK'] = nik;
+                newRow['Jenis Kelamin'] = gender === 'male' ? 'Laki-laki' : 'Perempuan';
+                newRow['Tanggal Lahir'] = formatDate(birthDate);
+                newRow['Usia (Bulan)'] = ageMonths;
+                newRow['Usia (Teks)'] = formatAge(ageMonths);
+                newRow['BB Ideal (kg)'] = bbIdeal;
+                newRow['TB Ideal (cm)'] = tbIdeal;
+                newRow['Cara Ukur TB'] = caraUkur;
+                newRow['LILA (cm)'] = lila;
+                newRow['Lingkar Kepala (cm)'] = lk;
+                newRow['Referensi'] = referensi;
+
+                processedData.push(newRow);
+            });
+
+            if (errors.length > 0) {
+                console.warn('Error:', errors);
+                showToast(`${errors.length} baris dilewati (Data tidak lengkap). Lihat Console (F12).`, 'error');
+            }
+            if (warnings.length > 0) {
+                console.warn('Warning:', warnings);
+            }
+
+            if (processedData.length === 0) {
+                showToast('Tidak ada data yang valid untuk diproses', 'error');
+                return;
+            }
+
+            renderResults();
+            showToast(`Berhasil memproses ${processedData.length} data`, 'success');
+        }
+
+        function findCol(row, keys) {
+            // Cari exact match dulu
+            const lowerKeys = Object.keys(row).map(k => ({ orig: k, low: k.toLowerCase().trim() }));
+            
+            for (const key of keys) {
+                // Exact match case insensitive
+                const found = lowerKeys.find(k => k.low === key.toLowerCase());
+                if (found) return row[found.orig];
+            }
+
+            // Jika tidak ketemu exact, coba contains (partial match)
+            for (const key of keys) {
+                const found = lowerKeys.find(k => k.low.includes(key.toLowerCase()));
+                if (found && row[found.orig]) return row[found.orig];
+            }
+            
+            return null;
+        }
+
+        // ============================================================
+        // RENDER (DINAMIS)
+        // ============================================================
+        function renderResults() {
+            const thead = document.getElementById('resultHead');
+            const tbody = document.getElementById('resultBody');
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            if (processedData.length === 0) return;
+
+            // 1. Tentukan urutan kolom
+            // Kolom Prioritas (ditaruh di depan)
+            const priorityCols = [
+                'No', 'Nama', 'NIK', 'Jenis Kelamin', 'Tanggal Lahir', 
+                'Usia (Teks)', 'Usia (Bulan)', 'BB Ideal (kg)', 'TB Ideal (cm)', 
+                'Cara Ukur TB', 'LILA (cm)', 'Lingkar Kepala (cm)', 'Referensi'
+            ];
+
+            // Cari kolom tambahan dari baris pertama (semua key yang bukan priority)
+            const firstRowKeys = Object.keys(processedData[0]);
+            const extraCols = firstRowKeys.filter(k => !priorityCols.includes(k));
+
+            // Gabungkan semua kolom dalam urutan yang benar
+            const allCols = [...priorityCols, ...extraCols];
+
+            // 2. Render Header
+            const trHead = document.createElement('tr');
+            allCols.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col;
+                if (extraCols.includes(col)) {
+                    th.style.color = 'var(--muted)';
+                    th.style.fontStyle = 'italic';
+                }
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+
+            // 3. Render Body
+            processedData.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+                tr.style.animation = `fadeIn 0.4s ease-out ${idx * 0.03}s forwards`;
+                tr.style.opacity = '0';
+
+                allCols.forEach(col => {
+                    const td = document.createElement('td');
+                    const val = item[col];
+
+                    // Special Formatting untuk kolom tertentu
+                    if (col === 'No') {
+                        td.style.textAlign = 'center';
+                        td.style.color = 'var(--muted)';
+                        td.textContent = val;
+                    } else if (col === 'Nama') {
+                        td.style.fontWeight = '600';
+                        td.textContent = escapeHtml(val);
+                    } else if (col === 'NIK') {
+                        td.className = 'nik-cell';
+                        td.textContent = val;
+                    } else if (col === 'Jenis Kelamin') {
+                        if (val === 'Laki-laki') td.innerHTML = '<span class="badge badge-laki"><i class="fas fa-mars"></i> L</span>';
+                        else td.innerHTML = '<span class="badge badge-perempuan"><i class="fas fa-venus"></i> P</span>';
+                    } else if (col === 'Usia (Teks)') {
+                        td.style.textAlign = 'center';
+                        td.innerHTML = `<div style="font-weight: 600;">${val}</div><div style="font-size:0.7rem; color:var(--muted);">${item['Usia (Bulan)']} bln</div>`;
+                    } else if (col === 'Cara Ukur TB') {
+                        td.style.textAlign = 'center';
+                        if (val === 'Terlentang') td.innerHTML = '<span class="badge badge-terlentang"><i class="fas fa-bed"></i> Terlentang</span>';
+                        else td.innerHTML = '<span class="badge badge-berdiri"><i class="fas fa-person"></i> Berdiri</span>';
+                    } else if (col === 'Referensi') {
+                        td.style.textAlign = 'center';
+                        if (val.includes('Permenkes')) td.innerHTML = '<span class="badge badge-ref-permenkes"><i class="fas fa-gavel"></i> Permenkes 2/2020</span>';
+                        else td.innerHTML = '<span class="badge badge-ref-who"><i class="fas fa-globe"></i> WHO 2007</span>';
+                    } else if (['BB Ideal (kg)', 'TB Ideal (cm)', 'LILA (cm)', 'Lingkar Kepala (cm)', 'Usia (Bulan)'].includes(col)) {
+                        td.style.textAlign = 'center';
+                        td.style.fontWeight = '600';
+                        td.textContent = val;
+                    } else {
+                        // Kolom Tambahan (Extra)
+                        td.className = 'extra-col';
+                        td.textContent = val !== undefined ? val : '-';
+                    }
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('statsSection').style.display = 'block';
+            document.getElementById('actionSection').style.display = 'block';
+            document.getElementById('tableSection').style.display = 'block';
+            updateStats(allCols.length);
+
+            setTimeout(() => {
+                document.getElementById('statsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 200);
+        }
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            const d = document.createElement('div');
+            d.textContent = String(str);
+            return d.innerHTML;
+        }
+
+        function updateStats(colCount) {
+            const total = processedData.length;
+            const male = processedData.filter(d => d['Jenis Kelamin'] === 'Laki-laki').length;
+            const female = processedData.filter(d => d['Jenis Kelamin'] === 'Perempuan').length;
+            const ages = processedData.map(d => d['Usia (Bulan)']);
+            animateCounter('statTotal', total);
+            animateCounter('statMale', male);
+            animateCounter('statFemale', female);
+            document.getElementById('statAge').textContent =
+                formatAge(Math.min(...ages)) + ' — ' + formatAge(Math.max(...ages));
+        }
+
+        function animateCounter(id, target) {
+            const el = document.getElementById(id);
+            const start = performance.now();
+            const dur = 600;
+            function update(now) {
+                const p = Math.min((now - start) / dur, 1);
+                el.textContent = Math.round(target * (1 - Math.pow(1 - p, 4)));
+                if (p < 1) requestAnimationFrame(update);
+            }
+            requestAnimationFrame(update);
+        }
+
+        // ============================================================
+        // EXPORT EXCEL (DINAMIS)
+        // ============================================================
+        function exportToExcel() {
+            if (processedData.length === 0) { showToast('Tidak ada data', 'error'); return; }
+            if (typeof XLSX === 'undefined') {
+                showToast('SheetJS tidak tersedia. Gunakan Export CSV.', 'error');
+                return;
+            }
+            try {
+                // Gunakan urutan kolom yang sama dengan tampilan tabel
+                const priorityCols = [
+                    'No', 'Nama', 'NIK', 'Jenis Kelamin', 'Tanggal Lahir', 
+                    'Usia (Teks)', 'Usia (Bulan)', 'BB Ideal (kg)', 'TB Ideal (cm)', 
+                    'Cara Ukur TB', 'LILA (cm)', 'Lingkar Kepala (cm)', 'Referensi'
+                ];
+                const firstRowKeys = Object.keys(processedData[0]);
+                const extraCols = firstRowKeys.filter(k => !priorityCols.includes(k));
+                const headers = [...priorityCols, ...extraCols];
+
+                // Siapkan data sesuai urutan header
+                const rows = processedData.map(item => {
+                    const row = {};
+                    headers.forEach(h => {
+                        row[h] = item[h];
+                    });
+                    return row;
+                });
+
+                const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+                
+                // Auto width column sederhana
+                ws['!cols'] = headers.map(h => ({ wch: h.length > 15 ? 20 : h.length + 5 }));
+                
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Hasil Antropometri');
+                
+                const blob = new Blob(
+                    [XLSX.write(wb, { bookType: 'xlsx', type: 'array' })],
+                    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+                );
+                downloadBlob(blob, 'hasil_nik_antropometri_smart.xlsx');
+                showToast('File Excel berhasil diunduh', 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Export Excel gagal: ' + err.message, 'error');
+            }
+        }
+
+        // ============================================================
+        // EXPORT CSV (DINAMIS)
+        // ============================================================
+        function exportToCSV() {
+            if (processedData.length === 0) { showToast('Tidak ada data', 'error'); return; }
+            try {
+                const priorityCols = [
+                    'No', 'Nama', 'NIK', 'Jenis Kelamin', 'Tanggal Lahir', 
+                    'Usia (Teks)', 'Usia (Bulan)', 'BB Ideal (kg)', 'TB Ideal (cm)', 
+                    'Cara Ukur TB', 'LILA (cm)', 'Lingkar Kepala (cm)', 'Referensi'
+                ];
+                const firstRowKeys = Object.keys(processedData[0]);
+                const extraCols = firstRowKeys.filter(k => !priorityCols.includes(k));
+                const headers = [...priorityCols, ...extraCols];
+
+                const csvRows = [headers.join(',')];
+                processedData.forEach(item => {
+                    const row = headers.map(h => csvEsc(item[h]));
+                    csvRows.push(row.join(','));
+                });
+                
+                downloadBlob(
+                    new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' }),
+                    'hasil_nik_antropometri_smart.csv'
+                );
+                showToast('File CSV berhasil diunduh', 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Export CSV gagal: ' + err.message, 'error');
+            }
+        }
+
+        function csvEsc(v) {
+            const s = (v === undefined || v === null) ? '' : String(v);
+            return (s.includes(',') || s.includes('"') || s.includes('\n'))
+                ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }
+
+        function downloadBlob(blob, filename) {
+            if (typeof URL !== 'undefined' && URL.createObjectURL) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function() {
+                const a = document.createElement('a');
+                a.style.display = 'none'; a.href = reader.result; a.download = filename;
+                document.body.appendChild(a); a.click();
+                setTimeout(() => document.body.removeChild(a), 200);
+            };
+            reader.readAsDataURL(blob);
+        }
+
+        // ============================================================
+        // RESET
+        // ============================================================
+        function resetAll() {
+            processedData = [];
+            document.getElementById('resultBody').innerHTML = '';
+            document.getElementById('resultHead').innerHTML = '';
+            document.getElementById('statsSection').style.display = 'none';
+            document.getElementById('actionSection').style.display = 'none';
+            document.getElementById('tableSection').style.display = 'none';
+            document.getElementById('fileInfo').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+        }
+
+        // ============================================================
+        // TOAST
+        // ============================================================
+        let toastTimer = null;
+        function showToast(msg, type) {
+            const t = document.getElementById('toast');
+            if (toastTimer) clearTimeout(toastTimer);
+            t.className = 'toast toast-' + type;
+            t.innerHTML = '<i class="fas ' + (type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation') + '"></i> ' + escapeHtml(msg);
+            requestAnimationFrame(() => t.classList.add('show'));
+            toastTimer = setTimeout(() => t.classList.remove('show'), 5000);
+        }
+
+        // ============================================================
+        // PARTIKEL
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            const c = document.getElementById('particles');
+            for (let i = 0; i < 12; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.left = Math.random() * 100 + '%';
+                p.style.top = Math.random() * 100 + '%';
+                p.style.opacity = (Math.random() * 0.1 + 0.03).toFixed(2);
+                const s = (Math.random() * 3 + 1) + 'px';
+                p.style.width = s; p.style.height = s;
+                p.style.animation = `floatGlow ${(Math.random()*20+15).toFixed(1)}s ${(Math.random()*-20).toFixed(1)}s ease-in-out infinite`;
+                c.appendChild(p);
+            }
+        });
+    </script>
+</body>
+</html>
